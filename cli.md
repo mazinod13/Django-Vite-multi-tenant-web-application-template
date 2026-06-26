@@ -100,12 +100,26 @@ Shell: **PowerShell** on Windows, inside the project `venv`.
 
 ---
 
+## 6. Frontend (Vite + Vue) — Step 6
+
+| Command | Purpose |
+|---------|---------|
+| `node --version` / `npm --version` | Confirm Node 20 / npm 10 are installed. |
+| `cd frontend; npm install` | Install Vite, Vue, and `@vitejs/plugin-vue` from `package.json`. |
+| `npm run dev` | Start the Vite dev server (port 5173) with hot-reload — run alongside `runserver`. |
+| `npm run build` | (Production) build optimized bundles into `frontend/dist/` + `manifest.json`. |
+
+> **Dev flow:** two terminals — Terminal 1 `cd frontend; npm run dev`, Terminal 2 `python manage.py runserver`.
+> Then visit `http://sunrise.localhost:8000/` for the Vue dashboard.
+> django-vite (`dev_mode=DEBUG`) loads assets from `http://localhost:5173/static/...`, so Vite `base` must be `/static/` (matches `STATIC_URL`).
+
+---
+
 ## Pending (not yet used)
 
 | Command | Will be for |
 |---------|-------------|
-| `winget install -e --id OpenJS.NodeJS.LTS` | Install Node.js for the Vite frontend (Step 6). |
-| `npm create vite@latest` / `npm install` / `npm run dev` / `npm run build` | Frontend scaffolding & build (Step 6). |
-| `winget install ... Redis` / `redis-server` | Redis for Celery + caching (Step 8). |
+| Redis install (Memurai / Docker / WSL) | Redis for Celery + caching (Step 8). |
 | `celery -A config worker -l info` | Run the Celery worker (Step 8). |
+| `celery -A config beat -l info` | Scheduled tasks (Step 8). |
 | `docker compose up` | Containerized stack (Step 9). |

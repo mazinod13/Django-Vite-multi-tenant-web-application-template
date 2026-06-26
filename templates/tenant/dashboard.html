@@ -1,0 +1,14 @@
+{% load django_vite %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tenant Dashboard</title>
+  {% vite_hmr_client %}
+  {% vite_asset 'src/apps/tenant/main.js' %}
+</head>
+<body>
+  <div id="app"></div>   <!-- Vue mounts here -->
+</body>
+</html>

@@ -21,6 +21,7 @@ SHARED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django.contrib.staticfiles",
+    "django_vite",
     
 ]
 
@@ -120,4 +121,11 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Multi-Tenant SaaS API",
     "VERSION": "1.0.0",
+}
+
+# --- Vite integration -------------------------------------------
+DJANGO_VITE = {
+    "default": {
+        "dev_mode": DEBUG,   # True in dev = load from Vite dev server; False = use built manifest
+    }
 }
