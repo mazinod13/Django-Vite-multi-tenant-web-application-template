@@ -100,3 +100,4 @@ docker/.env
 # Project docs (kept local, not committed)
 # ---------------------------------------------------------------------------
 *.pdf
+cli.md
