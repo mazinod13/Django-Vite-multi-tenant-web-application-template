@@ -115,6 +115,37 @@ Shell: **PowerShell** on Windows, inside the project `venv`.
 
 ---
 
+## 7. Run both servers from one terminal (honcho)
+
+| Command | Purpose |
+|---------|---------|
+| `pip install honcho` | Install the Procfile process runner. |
+| `honcho start` | Run Django + Vite together (reads `Procfile`); Ctrl+C stops both. |
+
+`Procfile` contents:
+```
+web: python manage.py runserver
+vite: npm --prefix frontend run dev
+```
+
+### Freeing stuck ports (orphaned runserver / vite)
+
+```powershell
+Get-NetTCPConnection -LocalPort 8000,5173 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+## 8. Domain verticals (school / restaurant) — SOP Part 4
+
+| Command | Purpose |
+|---------|---------|
+| `django-admin startapp school apps\tenant\school` | Create the school vertical app (then set dotted `name` in apps.py). |
+| `django-admin startapp restaurant apps\tenant\restaurant` | Create the restaurant vertical app. |
+| `python manage.py makemigrations school` (and `restaurant`) | Build migrations for the new vertical models. |
+| `python manage.py migrate_schemas` | Apply tenant-app migrations into **every** tenant schema. |
+| `python manage.py check` | Validate config (caught an `admin.E108` list_display typo). |
+
+> Per-tenant GUI: `core/views.dashboard` reads `request.tenant.category` and loads `src/apps/tenant/<category>/main.js` via `{% vite_asset vite_entry %}`. All schemas hold all apps; `category` only controls what each UI shows.
+
 ## Pending (not yet used)
 
 | Command | Will be for |

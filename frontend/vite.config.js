@@ -16,7 +16,8 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 public: 'src/apps/public/main.js',
-                tenant: 'src/apps/tenant/main.js',
+                school: 'src/apps/tenant/school/main.js',
+                restaurant: 'src/apps/tenant/restaurant/main.js',
             },
         },
     },
