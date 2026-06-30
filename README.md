@@ -1,6 +1,6 @@
 # Multi-Tenant SaaS Template — Django + Vite
 
-A reusable foundation for building **multi-tenant** web applications (School, Restaurant, Library management, and beyond). Each tenant (customer) gets its own **isolated PostgreSQL schema** via [`django-tenants`](https://django-tenants.readthedocs.io/), with a Django REST API and a Vue + Vite frontend.
+A reusable foundation for building **multi-tenant** web applications (School, Restaurant, Library management, and beyond). Each tenant (customer) gets its own **isolated PostgreSQL schema** via [`django-tenants`](https://django-tenants.readthedocs.io/), with a Django REST API and a React + TypeScript + Vite frontend.
 
 ---
 
@@ -11,7 +11,8 @@ A reusable foundation for building **multi-tenant** web applications (School, Re
 | Backend | Django 5.2 |
 | Multi-tenancy | django-tenants (schema-per-tenant) |
 | API | Django REST Framework + drf-spectacular (Swagger) |
-| Frontend | Vite 5 + Vue 3 (via django-vite) |
+| Frontend | Vite 5 + React 19 + TypeScript (via django-vite) |
+| UI | Tailwind CSS v4 + shadcn/ui components |
 | Database | PostgreSQL 15+ |
 | Async (optional) | Celery + Redis |
 | Config | django-environ (`.env`) |
@@ -194,10 +195,14 @@ apps/
     core/                # BaseModel (UUID pk, timestamps, soft-delete)
     users/               # Role + custom TenantUser
     api/                 # DRF serializers, viewsets, routes
-frontend/                # Vite + Vue
-  src/apps/public/       # public-site SPA entry
-  src/apps/tenant/       # tenant-dashboard SPA entry
-  vite.config.js
+frontend/                # Vite + React + TypeScript + Tailwind v4 + shadcn/ui
+  src/apps/public/       # public-site entry (main.tsx)
+  src/apps/tenant/       # per-category dashboards (school/, restaurant/ ... main.tsx)
+  src/components/ui/     # shadcn/ui components (button.tsx, ...)
+  src/lib/utils.ts       # cn() class-merge helper
+  src/styles/globals.css # Tailwind import + design tokens (theme)
+  vite.config.js         # react() + tailwindcss() plugins, "@" -> src alias
+  tsconfig.json
 templates/               # Django HTML templates
 .env                     # secrets (not committed)
 Procfile                 # runs Django + Vite together (honcho)
@@ -220,8 +225,8 @@ Each tenant has a `category` field. To add a vertical:
    python manage.py makemigrations school
    python manage.py migrate_schemas          # applies to every tenant schema
    ```
-2. **Frontend** — add a Vue entry `frontend/src/apps/tenant/school/main.js` and register it in `vite.config.js` `rollupOptions.input`.
-3. **Wire by type** — the Django dashboard view loads the right Vue entry based on `request.tenant.category`.
+2. **Frontend** — add a React entry `frontend/src/apps/tenant/school/main.tsx` (+ `App.tsx`) and register it in `vite.config.js` `rollupOptions.input`.
+3. **Wire by type** — the Django dashboard view loads the right React entry (`src/apps/tenant/<category>/main.tsx`) based on `request.tenant.category`. The template uses `{% vite_react_refresh %}` for React HMR.
 
 See `MultiTenant_SaaS_Django_Vite_SOP.pdf` (Part 4) for model examples per domain.
 

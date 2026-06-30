@@ -22,7 +22,8 @@ SHARED_APPS = [
     "django.contrib.auth",
     "django.contrib.staticfiles",
     "django_vite",
-    
+    "rest_framework",      # available in the public schema too (for the tenant-admin API)
+
 ]
 
 TENANT_APPS = [
@@ -32,6 +33,7 @@ TENANT_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "apps.tenant.api",
     
@@ -44,6 +46,7 @@ TENANT_APPS = [
 INSTALLED_APPS = list(SHARED_APPS) + [
     app for app in TENANT_APPS if app not in SHARED_APPS
 ]
+
 
 #---Multi-tenancy----
 TENANT_MODEL = "tenants.Tenant"
@@ -63,6 +66,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+# The public (bare-domain) schema uses its own URLs: platform-admin page + tenant API.
+PUBLIC_SCHEMA_URLCONF = "config.urls_public"
 WSGI_APPLICATION = "config.wsgi.application"
 
 TEMPLATES = [
@@ -100,6 +105,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+
+
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kathmandu"
 USE_I18N = True
@@ -113,11 +121,22 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "apps.tenant.api.authentication.TenantJWTAuthentication",
+        
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+}
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes = 30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION":True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 SPECTACULAR_SETTINGS = {

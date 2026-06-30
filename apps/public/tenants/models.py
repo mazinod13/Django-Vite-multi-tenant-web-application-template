@@ -20,7 +20,8 @@ class Tenant(TenantMixin):
     created_on = models.DateField(auto_now_add=True)
     
     auto_create_schema = True
-    
+    auto_drop_schema = True   # deleting a Tenant also DROPS its schema (destructive!)
+
     def __str__(self):
         return self.name
     
