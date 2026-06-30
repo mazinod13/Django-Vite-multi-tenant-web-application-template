@@ -4,11 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tenant Dashboard</title>
+  <title>{{ tenant.name }} Dashboard</title>
+  {% vite_react_refresh %}
   {% vite_hmr_client %}
-  {% vite_asset 'src/apps/tenant/main.js' %}
+  {% vite_asset vite_entry %}
 </head>
 <body>
-  <div id="app"></div>   <!-- Vue mounts here -->
+  <div id="app" data-tenant="{{ tenant.name }}" data-category="{{ category }}"></div>
 </body>
 </html>
