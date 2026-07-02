@@ -14,6 +14,16 @@
   --overlay: rgba(0, 0, 0, 0.8);
   --shadow: 4px 4px 0px 0px var(--border);   /* the hard offset shadow */
   --muted-foreground: #555555;
+
+  /* sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #88aaee;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #88aaee;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #000000;
+  --sidebar-ring: #000000;
 }
 
 .dark {
@@ -27,6 +37,16 @@
   --overlay: rgba(0, 0, 0, 0.8);
   --shadow: 4px 4px 0px 0px var(--border);
   --muted-foreground: #aaaaaa;
+
+  /* sidebar */
+  --sidebar: #212121;
+  --sidebar-foreground: #e6e6e6;
+  --sidebar-primary: #88aaee;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #88aaee;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #000000;
+  --sidebar-ring: #ffffff;
 }
 
 /* --- Map raw values to Tailwind utility names ----------------- */
@@ -52,6 +72,39 @@
   --shadow-shadow: var(--shadow);     /* shadow-shadow */
   --font-weight-base: 500;            /* font-base */
   --font-weight-heading: 700;         /* font-heading */
+
+  /* sidebar -> utility names (bg-sidebar, text-sidebar-foreground, ...) */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* marquee -> utility names (bg-marquee, text-marquee-foreground, ...) */
+  --animate-marquee: marquee 7s linear infinite;
+  --animate-marquee2: marquee2 7s linear infinite;
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes marquee2 {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(0%);
+    }
+  }
+
 }
 
 @layer base {

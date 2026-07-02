@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from apps.tenant.core.views import dashboard,reset_password
 
@@ -26,5 +26,5 @@ urlpatterns = [
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("",dashboard, name="dashbaord"),
     path("reset-password", reset_password, name="reset_password"),
-
+    re_path(r"^(?!api/|admin/|reset-password).*$",dashboard),
 ]
