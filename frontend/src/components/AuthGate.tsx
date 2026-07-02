@@ -1,14 +1,24 @@
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
-import { fetchMe, logout, type User } from '@/lib/auth'
+import { fetchMe, logout as apiLogout, type User } from '@/lib/auth'
 import AuthPage from '@/components/ui/AuthPage'
-import { Button } from '@/components/ui/button'
+
+type AuthContextValue = { user: User; logout: () => Promise<void> }
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+// Access the logged-in user + logout from any component inside <AuthGate>.
+// eslint-disable-next-line react-refresh/only-export-components
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used inside <AuthGate>')
+  return ctx
+}
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // ask the backend who we are (uses the stored access token)
   function refresh() {
     return fetchMe().then((u) => {
       setUser(u)
@@ -16,36 +26,33 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     })
   }
 
-      useEffect(() => {
+  useEffect(() => {
+    refresh()
+    // re-verify auth if the page is restored from the back/forward cache
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setUser(null)
+        setLoading(true)
         refresh()
-        const onShow = (e: PageTransitionEvent) => {
-        if (e.persisted) {
-            // page restored from bfcache: drop the stale UI, then re-verify
-            setUser(null)
-            setLoading(true)
-            refresh()
-        }
-        }
-        window.addEventListener('pageshow', onShow)
-        return () => window.removeEventListener('pageshow', onShow)
-    }, [])
-
+      }
+    }
+    window.addEventListener('pageshow', onShow)
+    return () => window.removeEventListener('pageshow', onShow)
+  }, [])
 
   if (loading) return <p className="p-8">Loading...</p>
-  if (!user) return <AuthPage onAuthenticated={refresh} />   // not logged in -> show login/signup/forgot
+  if (!user) return <AuthPage onAuthenticated={refresh} />
 
-  // logged in -> top bar with logout, then the actual dashboard
+  const logout = async () => {
+    await apiLogout()
+    setUser(null)
+  }
+
+  // NOTE: no wrapping <div>/<header> here — that would fight layouts like the
+  // sidebar that expect to own the full-height page. We only provide context.
   return (
-    <div>
-      <header className="flex items-center justify-between border-b-2 border-border bg-secondary-background p-4">
-        <span className="text-sm">
-          Signed in as <strong>{user.username}</strong> &middot; {user.tenant}
-        </span>
-        <Button variant="neutral" onClick={async () => { await logout(); setUser(null) }}>
-          Logout
-        </Button>
-      </header>
+    <AuthContext.Provider value={{ user, logout }}>
       {children}
-    </div>
+    </AuthContext.Provider>
   )
 }
