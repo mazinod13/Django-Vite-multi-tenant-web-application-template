@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/AuthGate'
+import RouteLoader from '@/components/RouterLoader'
 
 import MenuSection from './sections/MenuSection'
 import OrdersSection from './sections/OrdersSection'
@@ -113,6 +114,7 @@ export default function App({ tenantName }: Props) {
         <SidebarInset>
           <Header />
           <main className="p-8">
+            {/* <RouteLoader /> */}
             <Routes>
               <Route path="/" element={<MenuSection />} />
               <Route path="/orders" element={<OrdersSection />} />

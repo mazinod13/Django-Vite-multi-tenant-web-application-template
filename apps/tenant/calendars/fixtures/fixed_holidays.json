@@ -1,0 +1,8 @@
+[
+  { "bs_month": 1, "bs_day": 1, "title": "Nepali New Year", "title_np": "नयाँ वर्ष", "category": "holiday", "is_holiday": true },
+  { "bs_month": 2, "bs_day": 15, "title": "Republic Day", "title_np": "गणतन्त्र दिवस", "category": "holiday", "is_holiday": true },
+  { "bs_month": 6, "bs_day": 3, "title": "Constitution Day", "title_np": "संविधान दिवस", "category": "holiday", "is_holiday": true },
+  { "bs_month": 9, "bs_day": 27, "title": "Prithvi Jayanti / National Unity Day", "title_np": "पृथ्वी जयन्ती / राष्ट्रिय एकता दिवस", "category": "holiday", "is_holiday": true },
+  { "bs_month": 10, "bs_day": 1, "title": "Maghe Sankranti", "title_np": "माघे संक्रान्ति", "category": "festival", "is_holiday": true },
+  { "bs_month": 11, "bs_day": 7, "title": "Democracy Day", "title_np": "प्रजातन्त्र दिवस", "category": "holiday", "is_holiday": true }
+]
