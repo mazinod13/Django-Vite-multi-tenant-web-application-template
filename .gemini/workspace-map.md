@@ -41,6 +41,7 @@ Specified in [`.env`](file:///D:/django_vite_web_app/Django-Vite-multi-tenant-we
     - `users/` — Custom User and profile management for tenants
     - `school/` — Models and logic for school tenant databases (students, staff, classroom)
     - `restaurant/` — Models and logic for restaurant tenant databases (orders, menu, table)
+    - `library/` — Models and logic for library tenant databases (books, borrowings)
 
 - `config/` — Django configurations
   - `settings/` — Environment-based Django configurations
@@ -55,6 +56,7 @@ Specified in [`.env`](file:///D:/django_vite_web_app/Django-Vite-multi-tenant-we
       - `tenant/` — Tenant-specific client applications
         - `school/` — Portal for school workspace (students/teachers/roles management)
         - `restaurant/` — Portal for restaurant workspace (menus, inventory, orders)
+        - `library/` — Portal for library workspace (books catalog, borrowings)
     - `components/` — Shared React UI components and layouts
     - `lib/` — Shared libraries (Auth helper, Vite mount wrapper)
     - `hooks/` — React custom hooks
