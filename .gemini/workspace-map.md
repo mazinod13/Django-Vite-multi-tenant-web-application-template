@@ -58,9 +58,9 @@ Specified in [`.env`](file:///D:/django_vite_web_app/Django-Vite-multi-tenant-we
         - `school/` — Portal for school workspace (students/teachers/roles management)
         - `restaurant/` — Portal for restaurant workspace (menus, inventory, orders)
         - `library/` — Portal for library workspace (books catalog, borrowings)
-        - `inventory/` — Portal for inventory workspace (products stock, transactions, suppliers)
+        - `inventory/` — Portal for inventory workspace (NEPSE stock portfolio, trades ledger, brokers)
     - `components/` — Shared React UI components and layouts
-    - `lib/` — Shared libraries (Auth helper, Vite mount wrapper)
+    - `lib/` — Shared libraries (Auth helper, Vite mount wrapper, NEPSE data helpers)
     - `hooks/` — React custom hooks
 
 ## Key Exports
@@ -70,3 +70,7 @@ Specified in [`.env`](file:///D:/django_vite_web_app/Django-Vite-multi-tenant-we
   - `isAuthenticated()`: Check if active session JWT exists.
 - `frontend/src/lib/mount.tsx`:
   - `mountApp(AppNode)`: Utility to bootstrap standard React application context.
+- `frontend/src/lib/nepse.ts`:
+  - `getNepseCompanies()`: Parse and retrieve listed NEPSE companies from CSV.
+  - `getNepseLiveTrades()`: Retrieve current live trade entries from JSON.
+  - `calculatePortfolio(products)`: Compute portfolio net asset value, P&L stats, and sector allocations.
