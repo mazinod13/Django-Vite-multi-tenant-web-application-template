@@ -22,6 +22,7 @@ from apps.tenant.core.views import dashboard,reset_password
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("apps.tenant.api.urls")),
+    path("api/calendar/", include("apps.tenant.calendars.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("",dashboard, name="dashbaord"),
