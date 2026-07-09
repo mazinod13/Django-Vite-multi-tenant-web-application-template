@@ -53,6 +53,7 @@ Specified in [`.env`](file:///D:/django_vite_web_app/Django-Vite-multi-tenant-we
 
 - `frontend/` — React frontend application powered by Vite, Tailwind CSS, TypeScript, and shadcn/ui
   - `src/` — React source code
+    - `assets/` — Visual static assets (restaurant/library images)
     - `apps/` — Target builds for public and specific tenant personas
       - `public/` — Public lander and registration app
       - `tenant/` — Tenant-specific client applications
