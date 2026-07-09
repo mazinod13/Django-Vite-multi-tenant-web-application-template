@@ -38,6 +38,7 @@ Specified in [`.env`](file:///D:/django_vite_web_app/Django-Vite-multi-tenant-we
       - `models.py` — Database models for API resources
       - `authentication.py` — Custom multi-tenant JWT auth
     - `core/` — Common base models and views for all tenants
+      - `management/commands/import_data.py` — Management command to import CSV/JSON files into Postgres raw tables and tenant-specific Django models
     - `users/` — Custom User and profile management for tenants
     - `school/` — Models and logic for school tenant databases (students, staff, classroom)
     - `restaurant/` — Models and logic for restaurant tenant databases (orders, menu, table)
