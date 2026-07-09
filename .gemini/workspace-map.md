@@ -72,6 +72,4 @@ Specified in [`.env`](file:///D:/django_vite_web_app/Django-Vite-multi-tenant-we
 - `frontend/src/lib/mount.tsx`:
   - `mountApp(AppNode)`: Utility to bootstrap standard React application context.
 - `frontend/src/lib/nepse.ts`:
-  - `getNepseCompanies()`: Parse and retrieve listed NEPSE companies from CSV.
-  - `getNepseLiveTrades()`: Retrieve current live trade entries from JSON.
-  - `calculatePortfolio(products)`: Compute portfolio net asset value, P&L stats, and sector allocations.
+  - Contains core type and interface declarations (`NepseCompany`, `NepseLiveTrade`, `Product`, `PortfolioCalculations`).
