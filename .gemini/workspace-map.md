@@ -31,9 +31,9 @@ Specified in [`.env`](file:///D:/django_vite_web_app/Django-Vite-multi-tenant-we
       - `models.py` — Defines `Tenant` and `Domain` models (django-tenants)
       - `views.py` — Tenant registration and lookup views
   - `tenant/` — Tenant-specific applications (isolated in tenant schemas)
-    - `api/` — API for school and restaurant apps
-      - `views.py` — School, restaurant, and user management endpoints
-      - `urls.py` — Routes for tenant endpoints
+    - `api/` — API for school, restaurant, and NEPSE explorer apps
+      - `views.py` — School, restaurant, user management, and NEPSE data endpoints
+      - `urls.py` — Routes for tenant and NEPSE endpoints
       - `serializers.py` — DRF serializers for API data
       - `models.py` — Database models for API resources
       - `authentication.py` — Custom multi-tenant JWT auth
