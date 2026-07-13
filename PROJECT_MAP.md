@@ -11,6 +11,7 @@ It focuses on source files and intentionally ignores generated folders like `fro
 - [`cli.md`](cli.md): Command history and useful command notes.
 - [`.env`](.env): Local secrets and environment-specific settings.
 - [`Procfile`](Procfile): Process definition for deployment.
+- [`LEARNING_PATH.md`](LEARNING_PATH.md): Walkthrough guide of studied architectural components and custom command scripts.
 
 ## Django Config
 

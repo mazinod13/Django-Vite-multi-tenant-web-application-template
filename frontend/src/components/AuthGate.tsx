@@ -46,6 +46,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await apiLogout()
     setUser(null)
+    window.location.href = '/'
   }
 
   // NOTE: no wrapping <div>/<header> here — that would fight layouts like the

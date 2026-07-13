@@ -24,7 +24,7 @@ type Tenant = {
   primary_domain: string | null
 }
 
-const CATEGORIES = ['school', 'restaurant', 'Library']
+const CATEGORIES = ['school', 'restaurant', 'Library', 'inventory']
 
 export default function App() {
   const [tenants, setTenants] = useState<Tenant[]>([])

@@ -41,6 +41,8 @@ TENANT_APPS = [
     "apps.tenant.users",
     "apps.tenant.school",
     "apps.tenant.restaurant",
+    "apps.tenant.library",
+    "apps.tenant.inventory",
 ]
 
 INSTALLED_APPS = list(SHARED_APPS) + [

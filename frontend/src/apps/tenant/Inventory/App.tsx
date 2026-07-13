@@ -1,8 +1,9 @@
-import { BoxesIcon, CalendarIcon, ListOrderedIcon, TableIcon, UtensilsCrossedIcon } from 'lucide-react'
+import { Boxes, Truck, ArrowUpDown, Home, TrendingUp, Menu } from 'lucide-react'
 import { BrowserRouter, Navigate, Route, Routes, Link, useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/components/AuthGate'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
   Sidebar,
   SidebarContent,
@@ -16,25 +17,23 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar'
 
-import MenuSection from './sections/MenuSection'
-import OrdersSection from './sections/OrdersSection'
-import TablesSection from './sections/TablesSection'
-import ReservationsSection from './sections/ReservationsSection'
-import InventorySection from './sections/InventorySection'
+import DashboardSection from './sections/DashboardSection'
+import ProductsSection from './sections/ProductsSection'
+import SuppliersSection from './sections/SuppliersSection'
+import TransactionsSection from './sections/TransactionsSection'
+import NepseSection from './sections/NepseSection'
 
-import restaurantImg from '@/assets/restaurant.jpg'
-
-type NavEntry = { to: string; label: string; icon: typeof UtensilsCrossedIcon }
+type NavEntry = { to: string; label: string; icon: typeof Home }
 
 const NAV: NavEntry[] = [
-  { to: '/', label: 'Menu', icon: UtensilsCrossedIcon },
-  { to: '/orders', label: 'Orders', icon: ListOrderedIcon },
-  { to: '/tables', label: 'Tables', icon: TableIcon },
-  { to: '/reservations', label: 'Reservations', icon: CalendarIcon },
-  { to: '/inventory', label: 'Inventory', icon: BoxesIcon },
+  { to: '/', label: 'Dashboard', icon: Home },
+  { to: '/products', label: 'Products Stock', icon: Boxes },
+  { to: '/suppliers', label: 'Suppliers', icon: Truck },
+  { to: '/transactions', label: 'Stock Transactions', icon: ArrowUpDown },
+  { to: '/nepse', label: 'NEPSE Market Explorer', icon: TrendingUp },
 ]
 
 function NavItem({ to, label, icon: Icon }: NavEntry) {
@@ -67,13 +66,21 @@ function UserFooter() {
 function Header() {
   const location = useLocation()
   const current = NAV.find((n) => location.pathname === n.to)
+  const { toggleSidebar, open } = useSidebar()
   const { user, logout } = useAuth()
   
   return (
     <header className="flex items-center justify-between border-b-2 border-border p-4 bg-secondary-background/60 backdrop-blur-xs">
       <div className="flex items-center gap-3">
-        <SidebarTrigger />
-        <h1 className="text-xl font-heading">{current?.label ?? 'Dashboard'}</h1>
+        <Button 
+          variant={open ? "default" : "neutral"} 
+          size="icon" 
+          onClick={toggleSidebar} 
+          className="h-8 w-8 transition-all duration-200"
+        >
+          <Menu className={cn("h-4 w-4 transition-transform duration-200", open ? "rotate-0" : "rotate-90")} />
+        </Button>
+        <h1 className="text-xl font-heading">{current?.label ?? 'Inventory Dashboard'}</h1>
       </div>
       <div className="flex items-center gap-3">
         <span className="hidden sm:inline text-xs font-heading bg-background border-2 border-border px-3 py-1.5 rounded-base shadow-shadow">
@@ -89,14 +96,14 @@ function Header() {
 
 type Props = { tenantName: string }
 
-function RestaurantAppContent({ tenantName }: Props) {
+function InventoryAppContent({ tenantName }: Props) {
   return (
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="p-4 text-lg font-heading">{tenantName}</SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Restaurant</SidebarGroupLabel>
+            <SidebarGroupLabel>Stock Operations</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {NAV.map((item) => (
@@ -111,27 +118,18 @@ function RestaurantAppContent({ tenantName }: Props) {
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset 
-        className="relative bg-cover bg-center bg-no-repeat bg-fixed"
-        style={{ backgroundImage: `url(${restaurantImg})` }}
-      >
-        {/* Transparent background overlay to maintain perfect readability */}
-        <div className="absolute inset-0 bg-background/85 backdrop-blur-[3px]" />
-        
-        {/* Real Content Wrapper */}
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <Header />
-          <main className="p-8 flex-1">
-            <Routes>
-              <Route path="/" element={<MenuSection />} />
-              <Route path="/orders" element={<OrdersSection />} />
-              <Route path="/tables" element={<TablesSection />} />
-              <Route path="/reservations" element={<ReservationsSection />} />
-              <Route path="/inventory" element={<InventorySection />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-        </div>
+      <SidebarInset>
+        <Header />
+        <main className="p-8">
+          <Routes>
+            <Route path="/" element={<DashboardSection />} />
+            <Route path="/products" element={<ProductsSection />} />
+            <Route path="/suppliers" element={<SuppliersSection />} />
+            <Route path="/transactions" element={<TransactionsSection />} />
+            <Route path="/nepse" element={<NepseSection />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   )
@@ -140,7 +138,7 @@ function RestaurantAppContent({ tenantName }: Props) {
 export default function App({ tenantName }: Props) {
   return (
     <BrowserRouter>
-      <RestaurantAppContent tenantName={tenantName} />
+      <InventoryAppContent tenantName={tenantName} />
     </BrowserRouter>
   )
 }

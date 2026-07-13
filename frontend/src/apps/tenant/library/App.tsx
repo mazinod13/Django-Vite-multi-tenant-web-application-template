@@ -1,4 +1,4 @@
-import { BoxesIcon, CalendarIcon, ListOrderedIcon, TableIcon, UtensilsCrossedIcon } from 'lucide-react'
+import { BookOpen, Calendar, Users, Home, Sparkles } from 'lucide-react'
 import { BrowserRouter, Navigate, Route, Routes, Link, useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/components/AuthGate'
@@ -19,22 +19,22 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 
-import MenuSection from './sections/MenuSection'
-import OrdersSection from './sections/OrdersSection'
-import TablesSection from './sections/TablesSection'
-import ReservationsSection from './sections/ReservationsSection'
-import InventorySection from './sections/InventorySection'
+import BooksSection from './sections/BooksSection'
+import BorrowSection from './sections/BorrowSection'
+import MembersSection from './sections/MembersSection'
+import DashboardSection from './sections/DashboardSection'
+import RecommendationsSection from './sections/RecommendationsSection'
 
-import restaurantImg from '@/assets/restaurant.jpg'
+import libraryImg from '@/assets/library.jpg'
 
-type NavEntry = { to: string; label: string; icon: typeof UtensilsCrossedIcon }
+type NavEntry = { to: string; label: string; icon: typeof BookOpen }
 
 const NAV: NavEntry[] = [
-  { to: '/', label: 'Menu', icon: UtensilsCrossedIcon },
-  { to: '/orders', label: 'Orders', icon: ListOrderedIcon },
-  { to: '/tables', label: 'Tables', icon: TableIcon },
-  { to: '/reservations', label: 'Reservations', icon: CalendarIcon },
-  { to: '/inventory', label: 'Inventory', icon: BoxesIcon },
+  { to: '/', label: 'Dashboard', icon: Home },
+  { to: '/books', label: 'Books Catalog', icon: BookOpen },
+  { to: '/borrowings', label: 'Borrowings & Loans', icon: Calendar },
+  { to: '/members', label: 'Members', icon: Users },
+  { to: '/recommendations', label: 'Recommended Books', icon: Sparkles },
 ]
 
 function NavItem({ to, label, icon: Icon }: NavEntry) {
@@ -73,7 +73,7 @@ function Header() {
     <header className="flex items-center justify-between border-b-2 border-border p-4 bg-secondary-background/60 backdrop-blur-xs">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
-        <h1 className="text-xl font-heading">{current?.label ?? 'Dashboard'}</h1>
+        <h1 className="text-xl font-heading">{current?.label ?? 'Library Dashboard'}</h1>
       </div>
       <div className="flex items-center gap-3">
         <span className="hidden sm:inline text-xs font-heading bg-background border-2 border-border px-3 py-1.5 rounded-base shadow-shadow">
@@ -89,14 +89,14 @@ function Header() {
 
 type Props = { tenantName: string }
 
-function RestaurantAppContent({ tenantName }: Props) {
+function LibraryAppContent({ tenantName }: Props) {
   return (
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="p-4 text-lg font-heading">{tenantName}</SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Restaurant</SidebarGroupLabel>
+            <SidebarGroupLabel>Library Management</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {NAV.map((item) => (
@@ -113,7 +113,7 @@ function RestaurantAppContent({ tenantName }: Props) {
 
       <SidebarInset 
         className="relative bg-cover bg-center bg-no-repeat bg-fixed"
-        style={{ backgroundImage: `url(${restaurantImg})` }}
+        style={{ backgroundImage: `url(${libraryImg})` }}
       >
         {/* Transparent background overlay to maintain perfect readability */}
         <div className="absolute inset-0 bg-background/85 backdrop-blur-[3px]" />
@@ -123,11 +123,11 @@ function RestaurantAppContent({ tenantName }: Props) {
           <Header />
           <main className="p-8 flex-1">
             <Routes>
-              <Route path="/" element={<MenuSection />} />
-              <Route path="/orders" element={<OrdersSection />} />
-              <Route path="/tables" element={<TablesSection />} />
-              <Route path="/reservations" element={<ReservationsSection />} />
-              <Route path="/inventory" element={<InventorySection />} />
+              <Route path="/" element={<DashboardSection />} />
+              <Route path="/books" element={<BooksSection />} />
+              <Route path="/borrowings" element={<BorrowSection />} />
+              <Route path="/members" element={<MembersSection />} />
+              <Route path="/recommendations" element={<RecommendationsSection />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
@@ -140,7 +140,7 @@ function RestaurantAppContent({ tenantName }: Props) {
 export default function App({ tenantName }: Props) {
   return (
     <BrowserRouter>
-      <RestaurantAppContent tenantName={tenantName} />
+      <LibraryAppContent tenantName={tenantName} />
     </BrowserRouter>
   )
 }

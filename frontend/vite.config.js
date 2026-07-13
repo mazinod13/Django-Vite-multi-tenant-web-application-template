@@ -25,6 +25,8 @@ export default defineConfig({
         public: 'src/apps/public/main.tsx',
         school: 'src/apps/tenant/school/main.tsx',
         restaurant: 'src/apps/tenant/restaurant/main.tsx',
+        library: 'src/apps/tenant/library/main.tsx',
+        inventory: 'src/apps/tenant/inventory/main.tsx',
         reset:'src/apps/tenant/reset/main.tsx',
       },
     },

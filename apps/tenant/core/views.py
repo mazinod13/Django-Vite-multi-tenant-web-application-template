@@ -1,13 +1,13 @@
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
 
-KNOWN_CATEGORIES = {"school", "restaurant", "library"}
+KNOWN_CATEGORIES = {"school", "restaurant", "library", "inventory"}
 
 
 @never_cache
 def dashboard(request):
     tenant = request.tenant
-    category = getattr(tenant, "category", "school")
+    category = getattr(tenant, "category", "school").lower()
     if category not in KNOWN_CATEGORIES:
         category = "school"
     return render(request, "tenant/dashboard.html", {
