@@ -1,39 +1,68 @@
-# Restaurant SaaS — Build Roadmap
+# Restaurant SaaS — Development Phases
 
-Branch: `saas-restaurant-v1.0`. One tenant = one restaurant business, isolated in its
-own PostgreSQL schema via django-tenants.
+Branch: `saas-restaurant-v1.0`. One tenant = one restaurant business, isolated in its own
+PostgreSQL schema via django-tenants.
 
----
-
-## Where you are now
-
-**Working:** multi-tenancy (schema per restaurant), tenant-aware JWT auth
-(login/register/logout/refresh/password reset), a sidebar dashboard shell with
-react-router, the platform-admin SPA on the bare domain, and a Bikram Sambat
-`CalendarEvent` model + API you'll use later for holiday pricing rules.
-
-**Models that exist but have no API and no UI:** `Table`, `MenuItem`, `Order`,
-`OrderItem`, `Reservation`, `Inventory` in [apps/tenant/restaurant/models.py](apps/tenant/restaurant/models.py).
-The five React sections are "coming soon" stubs.
-
-**So the real job:** turn those six placeholder models into the data model the spec
-needs, then build outward module by module.
+Each phase has a **goal**, the **changes** it touches, the **commands** to run, and an
+**exit criterion** you can actually check. Do not start a phase until the previous one's
+exit criterion passes.
 
 ---
 
-## Step 0 — Finish the purge in the database
+## Current state
 
-Deleting the `school` app removed the code, but the tables are still sitting in every
-existing tenant schema (`sunrise`, `yums`), along with stale `django_migrations` rows.
+**Working:** multi-tenancy, tenant-aware JWT auth (login/register/logout/refresh/reset),
+sidebar dashboard shell with react-router, platform-admin SPA on the bare domain, and a
+Bikram Sambat `CalendarEvent` model + API kept for later holiday-pricing rules.
 
-```powershell
-$env:PGPASSWORD='root'
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -d saas_template
-```
+**Placeholder:** `Table`, `MenuItem`, `Order`, `OrderItem`, `Reservation`, `Inventory` in
+[apps/tenant/restaurant/models.py](apps/tenant/restaurant/models.py) — models only, no API,
+no UI. The five React sections are stubs.
 
-Then, once per tenant schema:
+**Data:** all restaurant tables are empty across every tenant schema. Only users exist
+(3 in `sunrise`, 2 in `yums`). This is why Phase 2 and 3 can rebuild models freely.
+
+---
+
+## The five decisions these phases assume
+
+Locked before any module, because each is cheap now and expensive once tenant schemas hold
+live data — every change replays across every restaurant's schema.
+
+**D1. Snapshot prices on the order line.** `OrderItem.subtotal` currently reads
+`menu_item.price` live, so raising a price silently rewrites every historical order and
+receipt. Store `unit_price` and `name_snapshot` frozen at order time; store `Order` totals
+as columns computed once on finalize. Never recompute a closed order.
+
+**D2. `Branch` exists from day one**, auto-created as "Main". Tenant is the *business*,
+branches are rows inside it. `Branch` becomes an FK on `Table`, `Order`, `Inventory`, and
+staff. Retrofitting that onto six populated tables later is the painful path.
+
+**D3. Tax is a table, not a constant.** Nepal is 13% VAT plus a 10% service charge, and the
+service charge is itself taxed. A `TaxRate` row (percent, is_compound, applies_to) survives
+a second market; a hardcoded `0.13` does not.
+
+**D4. RBAC via `Role.slug`** with fixed choices (owner/manager/waiter/chef/cashier), not the
+currently-unused `auth.Permission` M2M. Seed roles on tenant creation.
+
+**D5. Django Channels + Redis** for the kitchen display. Decided up front because it moves
+the app to ASGI, which is a much bigger change once orders already ship over plain HTTP.
+
+---
+
+## Phase 0 — Housekeeping
+
+**Goal:** clean slate, nothing stale left from the school era.
+
+**Changes:**
+- Drop the orphaned `school_*` tables and their migration rows (the code is gone, the tables
+  are not).
+- Decide what happens to the `sunrise` tenant — it was the school demo. Either drop it or
+  keep it as a second restaurant for testing tenant isolation. Keeping one extra tenant is
+  genuinely useful: isolation bugs only show up with two tenants.
 
 ```sql
+-- per tenant schema
 DROP TABLE IF EXISTS sunrise.school_attendance, sunrise.school_student, sunrise.school_classroom CASCADE;
 DELETE FROM sunrise.django_migrations WHERE app = 'school';
 
@@ -41,232 +70,213 @@ DROP TABLE IF EXISTS yums.school_attendance, yums.school_student, yums.school_cl
 DELETE FROM yums.django_migrations WHERE app = 'school';
 ```
 
-Verify nothing is left:
-
-```sql
-SELECT table_schema, table_name FROM information_schema.tables WHERE table_name LIKE 'school_%';
-```
-
-Also drop `sunrise` entirely if it was only ever a school demo — `DROP SCHEMA sunrise CASCADE;`
-then delete its `Tenant` and `Domain` rows from the public schema.
+**Exit:** `SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'school_%';`
+returns nothing.
 
 ---
 
-## Step 1 — Lock these five decisions before writing any module
+## Phase 1 — Foundation and tenant bootstrap
 
-Each one is cheap now and expensive after you have live data in tenant schemas,
-because every change means a migration replayed across every restaurant's schema.
+**Goal:** a newly created tenant comes up immediately usable — one branch, seeded roles, an
+owner account — instead of an empty schema you have to hand-configure.
 
-### 1.1 Snapshot prices on the order line — do not derive them
+This phase is D2, D3, D4 turned into tables. No user-facing feature ships here, and that is
+fine; everything after it depends on this being right.
 
-Today `OrderItem.subtotal` reads `self.menu_item.price` live. That means raising the
-price of a pizza silently rewrites every historical order and every past receipt total.
-For a POS this is a correctness bug, not a nitpick — it breaks reconciliation and tax
-records.
-
-```python
-class OrderItem(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT)
-    name_snapshot = models.CharField(max_length=100)          # menu item may be renamed later
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)  # frozen at order time
-    quantity = models.PositiveIntegerField(default=1)
-
-    @property
-    def subtotal(self):
-        return self.unit_price * self.quantity
-```
-
-Same rule for the order as a whole: store `subtotal`, `tax_total`, `service_charge`,
-`discount_total`, `grand_total` as columns on `Order`, computed once when the order is
-finalized. Never recompute a closed order from current menu prices.
-
-### 1.2 Decide multi-branch NOW, even if the MVP has one branch
-
-The spec wants franchise support. With schema-per-tenant, a tenant is the *business*
-and branches are rows inside it. That means `Branch` is a foreign key on `Table`,
-`Order`, `Inventory`, `StaffProfile`, and menu availability. Adding that FK to six
-populated tables later is a painful migration across every tenant schema.
-
-Recommendation: create `Branch` in Step 2, auto-create a "Main" branch on tenant
-signup, and hang everything off it from day one. Multi-branch then becomes a UI
-feature, not a schema migration.
+**Changes — [apps/tenant/core/models.py](apps/tenant/core/models.py)** (cross-cutting, so it
+belongs in `core`, not `restaurant`):
 
 ```python
 class Branch(BaseModel):
-    name = models.CharField(max_length=100)
-    address = models.TextField(blank=True)
-    phone = models.CharField(max_length=20, blank=True)
-    timezone = models.CharField(max_length=50, default="Asia/Kathmandu")
-    is_active = models.BooleanField(default=True)
+    name, address, phone, timezone (default "Asia/Kathmandu"), is_active
+
+class TenantSettings(BaseModel):        # one row per schema
+    currency (default "NPR"), currency_symbol, service_charge_percent,
+    invoice_prefix, opening_time, closing_time
+
+class TaxRate(BaseModel):               # D3
+    name, percent, is_compound, applies_to, is_active
+
+class AuditLog(BaseModel):              # add now — you cannot backfill history
+    actor (FK TenantUser, SET_NULL), action, model_name,
+    object_id (UUID), changes (JSON), ip_address
 ```
 
-### 1.3 Money and tax representation
+**Changes — [apps/tenant/users/models.py](apps/tenant/users/models.py):**
+- `Role.slug` with fixed choices (D4) and a `ROLE_SLUGS` constant.
+- `TenantUser.branch` FK (nullable — owners span branches).
 
-- Keep `DecimalField`, never float. Widen to `max_digits=10, decimal_places=2`.
-- Currency belongs on the tenant/branch, not on each item.
-- Nepal VAT is 13% plus a 10% service charge, and the service charge is normally taxed
-  too. Model tax as a `TaxRate` table (name, percent, is_compound, applies_to) rather
-  than a hardcoded constant, or you will rewrite billing when you hit a second market.
-
-### 1.4 RBAC — make the existing `Role` model actually do something
-
-`Role.permissions` is an unused M2M to `auth.Permission`. The spec needs owner /
-manager / waiter / chef / cashier. Decide now:
-
-- **Simple (recommended for MVP):** add `Role.slug` with fixed choices and write DRF
-  permission classes that check `request.user.role.slug`. Predictable, easy to reason
-  about, easy to test.
-- **Flexible:** keep the Django `Permission` M2M and let owners build custom roles.
-  More power, considerably more UI and more ways to lock yourself out.
-
-Whichever you pick, seed the default roles when a tenant is created so a fresh
-restaurant is usable immediately.
-
-### 1.5 Real-time transport for KDS
-
-The kitchen display and the POS must agree on order state within a second or two.
-Django Channels + Redis is the fit here, and you already have Redis and `django-redis`
-pinned. This changes your run command (ASGI, not WSGI), so decide before you build the
-orders module rather than retrofitting.
-
-Note you have a `D:\tms-websocket` working directory — if that has a Channels setup you
-like, reuse the pattern.
-
----
-
-## Step 2 — Foundation (before any feature module)
-
-1. Create `Branch` and a `TenantSettings` singleton (currency, tax rates, service
-   charge, opening hours).
-2. Add `Role.slug` + seed default roles; add `StaffProfile` linking `TenantUser` to a
-   `Branch`.
-3. Add an `AuditLog` model now, not later — the spec explicitly wants "who voided this
-   order, who changed this price". Retrofitting audit trails means losing all history
-   before the retrofit.
-   ```python
-   class AuditLog(BaseModel):
-       actor = models.ForeignKey(TenantUser, on_delete=models.SET_NULL, null=True)
-       action = models.CharField(max_length=50)        # created | updated | voided | refunded
-       model_name = models.CharField(max_length=50)
-       object_id = models.UUIDField()
-       changes = models.JSONField(default=dict)
-       ip_address = models.GenericIPAddressField(null=True, blank=True)
-   ```
-4. Hook tenant creation to auto-provision: Main branch, default roles, an owner user.
-   Right now `TenantSerializer.create` only makes the schema and domain.
-
-**Checkpoint:** `python manage.py makemigrations restaurant users` then
-`python manage.py migrate_schemas`, and confirm a newly created tenant comes up usable.
-
----
-
-## Step 3 — Module 1: Menu (your first vertical slice)
-
-This is the smallest module that exercises the whole stack, so build it end to end and
-use it as the template for every module after it.
-
-**Models** — replace the current flat `MenuItem`:
+**Changes — tenant provisioning.** Right now
+[TenantSerializer.create](apps/public/tenants/views.py) only makes the schema and the domain.
+Add a `bootstrap_tenant()` that seeds Main branch, default roles, settings, and default tax
+rates. It must run *inside* the new schema:
 
 ```python
-class MenuCategory(BaseModel):       # Starters, Mains, Drinks
+from django_tenants.utils import schema_context
+
+tenant.save()                          # creates schema + runs tenant migrations
+Domain.objects.create(domain=domain_name, tenant=tenant, is_primary=True)
+with schema_context(tenant.schema_name):
+    bootstrap_tenant(tenant)           # branch, roles, settings, tax rates
+```
+
+**Commands:**
+```powershell
+python manage.py makemigrations core users
+python manage.py migrate_schemas
+```
+
+**Exit:** create a tenant from the platform-admin page, sign up on its subdomain, and confirm
+the account lands with a role and a branch attached.
+
+---
+
+## Phase 2 — Menu
+
+**Goal:** first full vertical slice — model to migration to serializer to viewset to URL to
+React. Build it carefully; every module after this copies its shape.
+
+**Changes — replace the flat `MenuItem`:**
+
+```python
+class MenuCategory(BaseModel):     # Starters, Mains, Drinks
     name, sort_order, is_active
 
 class MenuItem(BaseModel):
     category (FK), name, description, image, base_price,
     is_available (the "86'd" toggle), sort_order
 
-class MenuVariant(BaseModel):        # Small / Medium / Large
+class MenuVariant(BaseModel):      # Small / Medium / Large
     menu_item (FK), name, price_delta
 
-class ModifierGroup(BaseModel):      # "Choose a sauce", min/max selectable
+class ModifierGroup(BaseModel):    # "Choose a sauce"
     name, min_select, max_select, is_required
 
-class Modifier(BaseModel):           # Extra cheese +50
+class Modifier(BaseModel):         # Extra cheese +50
     group (FK), name, price_delta
 ```
 
-**Backend steps:**
-1. Write the models, `makemigrations restaurant`, `migrate_schemas`.
-2. Serializers in `apps/tenant/restaurant/serializers.py` — nest variants and modifier
-   groups inside the item so the POS fetches a menu in one request.
-3. ViewSets inheriting `TenantBaseViewSet` from [apps/tenant/api/views.py](apps/tenant/api/views.py)
-   (you already get soft-delete filtering and `IsAuthenticated` free).
-4. New `apps/tenant/restaurant/urls.py`, included at `/api/restaurant/` in
-   [config/urls.py](config/urls.py).
-5. Register everything in `admin.py` so you can seed data without a UI.
+**Rebuilding the migration.** Because every restaurant table is empty, do not write forward
+migrations for this reshape — squash instead:
 
-**Frontend steps:**
-6. `frontend/src/lib/api.ts` — thin typed wrappers over the existing `authFetch`
-   in [frontend/src/lib/auth.ts](frontend/src/lib/auth.ts).
-7. Build out [MenuSection.tsx](frontend/src/apps/tenant/restaurant/sections/MenuSection.tsx):
-   category list, item grid, create/edit dialog, availability toggle.
+```powershell
+# 1. drop restaurant tables in EVERY tenant schema, e.g.
+#    DROP TABLE sunrise.restaurant_orderitem, sunrise.restaurant_order, ... CASCADE;
+#    DELETE FROM sunrise.django_migrations WHERE app = 'restaurant';
+# 2. delete apps/tenant/restaurant/migrations/0001_initial.py
+python manage.py makemigrations restaurant
+python manage.py migrate_schemas
+```
 
-**Checkpoint:** create a category and an item in the browser, reload, confirm it
-persists in the right schema and is invisible from another tenant's subdomain.
+> This shortcut is available exactly once. The moment a real restaurant has data, every
+> model change becomes a forward migration, forever. Note the date you stop using it.
 
----
+**Backend:** `serializers.py` (nest variants and modifier groups inside the item so the POS
+fetches a whole menu in one request), viewsets inheriting `TenantBaseViewSet` from
+[apps/tenant/api/views.py](apps/tenant/api/views.py) (you get soft-delete filtering and
+`IsAuthenticated` free), a new `apps/tenant/restaurant/urls.py` included at
+`/api/restaurant/` in [config/urls.py](config/urls.py), and admin registration so you can
+seed without a UI.
 
-## Step 4 — Module 2: Orders + POS
+**Frontend:** `frontend/src/lib/api.ts` — typed wrappers over the existing `authFetch` in
+[frontend/src/lib/auth.ts](frontend/src/lib/auth.ts). Then build out
+[MenuSection.tsx](frontend/src/apps/tenant/restaurant/sections/MenuSection.tsx): category
+list, item grid, create/edit dialog, availability toggle.
 
-Depends on Step 3. The core of the product.
+**Also this phase: the first tests.** The surface is still small, and one test matters more
+than all the others — *tenant A cannot read tenant B's menu*. That is the bug you cannot
+afford to ship, and it is trivial to write now.
 
-- `Order`: add `branch`, `order_type` (dine_in / takeaway / delivery), `customer`,
-  `server` (staff FK), the frozen money columns from 1.1, and a status machine
-  `draft -> placed -> preparing -> ready -> served -> paid`, plus `cancelled`/`voided`.
-- Enforce legal transitions in one place on the model. Do not let a viewset set
-  arbitrary status — that is how you get paid orders reopening.
-- `OrderItem` with the price snapshot, plus selected modifiers and per-line notes.
-- POS UI: touch-first, big targets, minimal typing. Staff on a busy Friday will not
-  read labels.
-- Split bill and merge tables are the fiddly parts. Build single-order billing first
-  and leave hooks for splitting.
-
-**Checkpoint:** ring up a dine-in order end to end and see correct totals.
+**Exit:** create a category and an item in the browser, reload, confirm it persists in the
+right schema and is invisible from the other tenant's subdomain — proven by a passing test,
+not just by looking.
 
 ---
 
-## Step 5 — Module 3: Tables + KOT/KDS
+## Phase 3 — Orders and POS
 
-- `Table`: add `branch` FK, and drop `unique=True` on `number` in favour of
+**Goal:** the core of the product. Ring up a real order.
+
+**Changes:**
+- `Order`: add `branch`, `order_type` (dine_in / takeaway / delivery), `customer`, `server`
+  (staff FK), the frozen money columns from D1 (`subtotal`, `tax_total`, `service_charge`,
+  `discount_total`, `grand_total`), and status `draft -> placed -> preparing -> ready ->
+  served -> paid` plus `cancelled` / `voided`.
+- **Enforce legal transitions in one place on the model.** If a viewset can set arbitrary
+  status, paid orders will reopen. Write `Order.transition_to(new_status)` that raises on an
+  illegal move, and let the API call only that.
+- `OrderItem` with D1 snapshots, plus an `OrderItemModifier` join for selected modifiers and
+  per-line kitchen notes.
+- Every state change writes an `AuditLog` row (Phase 1 exists for this).
+
+**POS UI:** touch-first, large targets, minimal typing. Staff on a busy Friday night will not
+read labels. Build single-order billing first; leave hooks for split/merge rather than
+building them now.
+
+**Exit:** ring up a dine-in order end to end, with correct totals, and confirm the totals do
+not change when you edit the menu item's price afterwards. That last check is D1 working.
+
+---
+
+## Phase 4 — Tables, KOT and KDS
+
+**Goal:** kitchen and front-of-house agree on order state within a second.
+
+**Changes:**
+- `Table`: add `branch` FK, and replace `unique=True` on `number` with
   `unique_together = ("branch", "number")` — table 5 exists in every branch.
-- Status: available / occupied / reserved / cleaning. Floor plan can start as a simple
-  grid; drag-and-drop layout is a later nicety.
-- Kitchen Display: Django Channels consumer broadcasting order events to a
-  per-branch group. Kitchen marks items ready, POS sees it live.
-- `Reservation`: add `status` (booked / seated / no_show / cancelled), time slots, and
-  a waitlist.
+- Status: available / occupied / reserved / cleaning. A grid is fine; drag-and-drop floor
+  plan is a later nicety.
+- **Channels + Redis (D5).** This is the phase that changes how you run the app: ASGI, a
+  routing module, a per-branch consumer group, and `honcho`'s web line moves to an ASGI
+  server. You already have `redis` and `django-redis` pinned. Check `D:\tms-websocket` for a
+  pattern worth reusing.
+- `Reservation`: add `status` (booked / seated / no_show / cancelled), time slots, waitlist.
+
+**Exit:** place an order on the POS and watch it appear on a KDS screen in another browser
+without a refresh; mark it ready there and watch the POS update.
 
 ---
 
-## Step 6 — Module 4: Billing + payments
+## Phase 5 — Billing and payments
 
-- `Payment` model: method, amount, reference, `paid_at`. One order can have many
-  payments (split payment, part cash part card).
-- `Invoice` with an immutable sequential number per branch — tax authorities require
-  gapless numbering, so allocate it in a transaction, never from `count() + 1`.
-- Receipt: HTML template that prints cleanly to 58mm/80mm thermal, plus a PDF.
-- Gateway integration last, behind an interface. For Nepal: eSewa, Khalti, Fonepay.
-  Keep the provider behind a `PaymentProvider` abstraction so the second one is easy.
-- **Never store raw card data.** Use the gateway's hosted flow and you stay out of
-  PCI-DSS scope entirely.
+**Goal:** money leaves the building correctly and the paperwork survives an audit.
+
+**Changes:**
+- `Payment`: method, amount, reference, `paid_at`. One order has many payments — split
+  payment, part cash part card, is the normal case, not the exception.
+- `Invoice` with an immutable sequential number per branch. Allocate it inside a transaction
+  with a row lock; **never** `count() + 1`. Tax authorities require gapless numbering and two
+  concurrent cashiers will collide.
+- Apply the Phase 1 `TaxRate` rows, including the compound service charge.
+- Receipt: an HTML template that prints cleanly to 58mm/80mm thermal, plus a PDF.
+- Gateways last, behind a `PaymentProvider` interface so the second one is easy. For Nepal:
+  eSewa, Khalti, Fonepay.
+
+> **Never store raw card data.** Use the gateway's hosted flow and you stay out of PCI-DSS
+> scope entirely. Storing PANs pulls a compliance regime onto the whole stack.
+
+**Exit:** close an order with a split payment and print a receipt with correct VAT and
+service charge.
 
 ---
 
-## Step 7 — Module 5: Basic reporting
+## Phase 6 — Reporting
 
-Daily sales, sales by item, sales by category, peak hours, staff performance.
+Daily sales, sales by item and category, peak hours, staff performance.
 
-Read from the frozen order columns, never recompute from the live menu. Start with
-straightforward aggregate queries; add materialized rollups only when a report gets
-slow with real data.
+Read from the frozen `Order` columns, never recompute from the live menu — that is the whole
+point of D1. Start with plain aggregate queries; add materialized rollups only when a report
+is measurably slow against real data.
+
+**Exit:** a daily sales figure that matches hand-adding the day's invoices.
 
 ---
 
-## Step 8 — Module 6: Inventory
+## Phase 7 — Inventory
 
-The current `Inventory` model cannot support the spec's auto-deduction, because nothing
-connects a menu item to its ingredients. You need a recipe join:
+The current `Inventory` model **cannot** do the auto-deduction the spec asks for, because
+nothing connects a menu item to its ingredients. It needs a recipe join:
 
 ```python
 class Ingredient(BaseModel):
@@ -280,43 +290,46 @@ class StockMovement(BaseModel):
     order (nullable FK), created_by
 ```
 
-Deduct on order completion, inside the same transaction, by writing `StockMovement`
-rows rather than mutating a counter. Then stock level is always reconstructible and you
-get a full audit trail for free. Low-stock alerts and purchase orders follow.
+Deduct on order completion, in the same transaction, by **appending `StockMovement` rows
+rather than mutating a counter**. Stock level then stays reconstructible and you get the
+audit trail for free. Low-stock alerts and purchase orders follow from the same table.
+
+**Exit:** complete an order and watch the right ingredient quantities drop, with a movement
+row explaining each one.
 
 ---
 
-## Step 9 — Module 7: CRM, loyalty, multi-branch rollout
+## Phase 8 — CRM, loyalty, multi-branch rollout
 
-Customer profiles and order history, loyalty points, coupons, feedback. Then turn on
-the multi-branch UI that Step 1.2 already made possible: branch switcher, org-level vs
-branch-level reporting.
+Customer profiles and order history, loyalty points, coupons, feedback collection. Then turn
+on the multi-branch UI that D2 already made possible: branch switcher, org-level versus
+branch-level reporting. This is a UI phase, not a schema phase — which was the entire point
+of deciding D2 in Phase 1.
+
+---
+
+## Cross-cutting, not a phase
+
+- **Tests** start in Phase 2 and grow with each phase. Tenant isolation, order state
+  transitions, and invoice numbering are the three that earn their keep.
+- **`/api/docs/` is incomplete** — 15 drf-spectacular warnings from a missing
+  `OpenApiAuthenticationExtension` for `TenantJWTAuthentication` and five APIViews with no
+  `serializer_class`. Worth an hour before you invite anyone to integrate.
+- **Platform-admin auth is a stopgap.** The `X-Platform-Token` shared secret closed an open
+  hole; the real fix is a platform-admin user model in the public schema.
+- **Unwired dependencies:** `celery`, `django-allauth`, `django-filter`,
+  `django-cors-headers`, `boto3`, `django-storages` are pinned but unused. Celery becomes
+  real in Phase 5 (receipts, notifications); drop the rest or use them.
+- **No Docker, no CI.**
 
 ---
 
 ## Deliberately deferred
 
-- **Offline POS.** Genuinely hard: needs a local store, an outbox queue, and conflict
-  resolution on reconnect. Do it once the online path is stable and you understand the
-  real failure modes.
-- **Delivery aggregators** (Foodmandu, Pathao). Each is a bespoke integration; wait for
-  a customer who actually needs one.
-- **Accounting sync, hardware drivers, WhatsApp marketing.** All post-MVP.
-- **Subscription billing for the SaaS itself.** `Tenant.plan` exists as a placeholder;
-  wire it to real metering when you have paying restaurants.
-
----
-
-## Known debt carried into this branch
-
-- Zero tests anywhere. Worth fixing at Step 3, while the surface is still small — a
-  tenant-isolation test in particular ("tenant A cannot read tenant B's menu") is the
-  one bug you cannot afford to ship.
-- `/api/docs/` is incomplete: 15 drf-spectacular warnings from a missing
-  `OpenApiAuthenticationExtension` for `TenantJWTAuthentication` and five APIViews with
-  no `serializer_class`.
-- The platform-admin API is gated by a shared token, which is a stopgap. Real fix is a
-  proper platform-admin user model in the public schema.
-- `celery`, `django-allauth`, `django-filter`, `django-cors-headers`, `boto3`, and
-  `django-storages` are pinned but unwired. Either use them or drop them.
-- No Docker setup and no CI.
+- **Offline POS.** Genuinely hard — local store, outbox queue, conflict resolution on
+  reconnect. Do it once the online path is stable and you know the real failure modes.
+- **Delivery aggregators** (Foodmandu, Pathao, Uber Eats). Each is bespoke; wait for a
+  customer who needs one.
+- **Accounting sync, hardware drivers, WhatsApp marketing.** Post-MVP.
+- **Subscription billing for the SaaS itself.** `Tenant.plan` is a placeholder; wire metering
+  when you have paying restaurants.
