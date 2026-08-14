@@ -25,7 +25,7 @@ urlpatterns = [
     path("api/calendar/", include("apps.tenant.calendars.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("",dashboard, name="dashbaord"),
+    path("", dashboard, name="dashboard"),
     path("reset-password", reset_password, name="reset_password"),
     re_path(r"^(?!api/|admin/|reset-password).*$",dashboard),
 ]

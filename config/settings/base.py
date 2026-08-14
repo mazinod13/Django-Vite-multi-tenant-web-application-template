@@ -14,6 +14,10 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost","127.0.0.1"])
 
+# Shared secret for the platform-admin API on the bare domain (public schema).
+# Leave blank in dev; REQUIRED in production or tenant management is locked out.
+PLATFORM_ADMIN_TOKEN = env("PLATFORM_ADMIN_TOKEN", default="")
+
 SHARED_APPS = [
     "django_tenants",
     "apps.public.tenants", #holds the tenant + domain models
@@ -39,7 +43,6 @@ TENANT_APPS = [
     
     "apps.tenant.core",
     "apps.tenant.users",
-    "apps.tenant.school",
     "apps.tenant.restaurant",
     "apps.tenant.calendars",
 ]
@@ -116,6 +119,19 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Vite writes its production bundles here; collectstatic picks them up so
+# {% vite_asset %} URLs (/static/assets/...) resolve when dev_mode is off.
+STATICFILES_DIRS = [BASE_DIR / "frontend" / "dist"]
+
+# Uploads (TenantUser.avatar, menu item photos, ...). TenantFileSystemStorage
+# nests each tenant's files under MEDIA_ROOT/<schema_name>/ so one restaurant
+# can never read or overwrite another's.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+STORAGES = {
+    "default": {"BACKEND": "django_tenants.files.storage.TenantFileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -149,5 +165,9 @@ SPECTACULAR_SETTINGS = {
 DJANGO_VITE = {
     "default": {
         "dev_mode": DEBUG,   # True in dev = load from Vite dev server; False = use built manifest
+        "dev_server_port": 5173,
+        # Vite 5 writes the manifest to dist/.vite/manifest.json. Without this,
+        # django-vite looks in STATIC_ROOT and every {% vite_asset %} 500s in prod.
+        "manifest_path": BASE_DIR / "frontend" / "dist" / ".vite" / "manifest.json",
     }
 }

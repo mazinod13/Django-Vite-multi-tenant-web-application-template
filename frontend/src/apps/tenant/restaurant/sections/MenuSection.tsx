@@ -1,30 +1,38 @@
+import {
+  Coffee,
+  Croissant,
+  Drumstick,
+  EggFried,
+  Hamburger,
+  IceCreamBowl,
+  Pizza,
+  Popcorn,
+  Sandwich,
+} from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import Marquee from '@/components/ui/marquee'
-import { Coffee, Croissant, Drumstick, EggFried, Hamburger, IceCreamBowl, Pizza, Popcorn, Sandwich } from 'lucide-react'
-import { DualCalendar } from '@/components/ui/nepali-calendar'
-import { useState } from 'react'
-export default function MenuSection() {
-  const [date, setDate] = useState<Date | undefined>(new Date())
 
+export default function MenuSection() {
   return (
-    <div className="space-y-4">
-        <div className="fixed inset-x-0 -bottom-5 ">
-            <Marquee items={[
-                <><Hamburger className="w-10 h-10" /></>,
-                <><Pizza className="w-10 h-10" /></>,
-                <><Croissant className="w-10 h-10" /></>,
-                <><Coffee  className="w-10 h-10" /></>,
-                <><EggFried   className="w-10 h-10" /></>,
-                <><Drumstick className="w-10 h-10"/></>,
-                <><Sandwich  className="w-10 h-10"/></>,
-                <><IceCreamBowl className="w-10 h-10" /></>,
-                <><Popcorn className="w-10 h-10" /></>  
-            ]}  />
-        </div>
-        <div className="flex items-right justify-between">
-        <DualCalendar selected={date} onSelect={setDate} />
-        </div>    
+    <div className="space-y-2">
+      <h2 className="text-2xl font-heading">Menu</h2>
+      <p className="text-muted-foreground">Menu section — coming soon.</p>
+
+      <div className="fixed inset-x-0 -bottom-5">
+        <Marquee
+          items={[
+            <Hamburger className="h-10 w-10" />,
+            <Pizza className="h-10 w-10" />,
+            <Croissant className="h-10 w-10" />,
+            <Coffee className="h-10 w-10" />,
+            <EggFried className="h-10 w-10" />,
+            <Drumstick className="h-10 w-10" />,
+            <Sandwich className="h-10 w-10" />,
+            <IceCreamBowl className="h-10 w-10" />,
+            <Popcorn className="h-10 w-10" />,
+          ]}
+        />
+      </div>
     </div>
   )
 }

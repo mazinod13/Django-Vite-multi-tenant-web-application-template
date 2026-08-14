@@ -11,6 +11,8 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
+# WSGI is the production entrypoint (gunicorn/uwsgi), so it must NOT fall back
+# to development settings -- that would silently deploy with DEBUG=True.
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
 
 application = get_wsgi_application()

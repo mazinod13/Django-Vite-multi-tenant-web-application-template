@@ -31,7 +31,7 @@ class CalendarEventViewSet(ModelViewSet):
 
     def perform_destroy(self, instance):
         # soft delete to match the rest of the tenant models
-        instance.sof_delete()
+        instance.soft_delete()
 
 
 class CalendarYearView(APIView):

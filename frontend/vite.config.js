@@ -23,9 +23,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         public: 'src/apps/public/main.tsx',
-        school: 'src/apps/tenant/school/main.tsx',
         restaurant: 'src/apps/tenant/restaurant/main.tsx',
-        reset:'src/apps/tenant/reset/main.tsx',
+        reset: 'src/apps/tenant/reset/main.tsx',
       },
     },
   },

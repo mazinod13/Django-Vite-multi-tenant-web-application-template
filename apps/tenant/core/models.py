@@ -12,7 +12,7 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
         
-    def sof_delete(self):
+    def soft_delete(self):
         self.is_deleted = True
         self.save(update_fields=["is_deleted"])
             

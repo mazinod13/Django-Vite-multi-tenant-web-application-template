@@ -19,12 +19,18 @@ type Tenant = {
   id: string
   name: string
   slug: string
-  category: string
   plan: string
   primary_domain: string | null
 }
 
-const CATEGORIES = ['school', 'restaurant', 'Library']
+// The public schema has no users, so the platform-admin API is gated by a
+// shared secret (see IsPlatformAdmin). Set it once from the browser console:
+//   localStorage.setItem('platform_token', '<PLATFORM_ADMIN_TOKEN from .env>')
+// In dev with no token configured the API is open and this header is ignored.
+function adminHeaders(extra: HeadersInit = {}): HeadersInit {
+  const token = localStorage.getItem('platform_token')
+  return token ? { ...extra, 'X-Platform-Token': token } : extra
+}
 
 export default function App() {
   const [tenants, setTenants] = useState<Tenant[]>([])
@@ -32,18 +38,19 @@ export default function App() {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [domain, setDomain] = useState('')
-  const [category, setCategory] = useState('school')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   function load() {
-    fetch('/api/tenants/').then((r) => r.json()).then(setTenants)
+    fetch('/api/tenants/', { headers: adminHeaders() })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setTenants)
   }
   useEffect(() => { load() }, [])
 
   function resetForm() {
     setEditingId(null)
-    setName(''); setSlug(''); setDomain(''); setCategory('school'); setError('')
+    setName(''); setSlug(''); setDomain(''); setError('')
   }
 
   function startEdit(t: Tenant) {
@@ -51,7 +58,6 @@ export default function App() {
     setName(t.name)
     setSlug(t.slug)
     setDomain(t.primary_domain ?? '')
-    setCategory(t.category)
     setError('')
   }
 
@@ -61,9 +67,9 @@ export default function App() {
     const editing = editingId !== null
     const res = await fetch(editing ? `/api/tenants/${editingId}/` : '/api/tenants/', {
       method: editing ? 'PATCH' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: adminHeaders({ 'Content-Type': 'application/json' }),
       // slug can't change on edit (it's the live schema name)
-      body: JSON.stringify(editing ? { name, category, domain } : { name, slug, domain, category }),
+      body: JSON.stringify(editing ? { name, domain } : { name, slug, domain }),
     })
     setLoading(false)
     if (res.ok) {
@@ -76,7 +82,7 @@ export default function App() {
   }
 
   async function remove(id: string) {
-    await fetch(`/api/tenants/${id}/`, { method: 'DELETE' })
+    await fetch(`/api/tenants/${id}/`, { method: 'DELETE', headers: adminHeaders() })
     if (editingId === id) resetForm()
     load()
   }
@@ -94,21 +100,14 @@ export default function App() {
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-3">
-              <Input placeholder="Name (e.g. Acme School)" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input placeholder="Name (e.g. Bella Pasta)" value={name} onChange={(e) => setName(e.target.value)} />
               <Input
-                placeholder="Slug / schema (e.g. acme)"
+                placeholder="Slug / schema (e.g. bellapasta)"
                 value={slug}
                 disabled={!!editingId}   // can't rename a live schema
                 onChange={(e) => setSlug(e.target.value)}
               />
-              <Input placeholder="Domain (e.g. acme.localhost)" value={domain} onChange={(e) => setDomain(e.target.value)} />
-              <select
-                className="w-full rounded-base border-2 border-border bg-secondary-background p-2 text-sm"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <Input placeholder="Domain (e.g. bellapasta.localhost)" value={domain} onChange={(e) => setDomain(e.target.value)} />
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex gap-2">
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -136,7 +135,7 @@ export default function App() {
                 <div>
                   <p className="font-heading">{t.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {t.category} &middot; {t.primary_domain ?? 'no domain'}
+                    {t.slug} &middot; {t.plan} &middot; {t.primary_domain ?? 'no domain'}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -157,8 +156,9 @@ export default function App() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete {t.name}?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This permanently drops the tenant's database schema and all of its data.
-                          This cannot be undone.
+                          Removes the tenant and its domain, so the restaurant can no longer
+                          be reached. The database schema itself is left in place -- drop it
+                          by hand with DROP SCHEMA "{t.slug}" CASCADE once you're sure.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

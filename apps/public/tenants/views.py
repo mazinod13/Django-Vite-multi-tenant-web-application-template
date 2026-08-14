@@ -1,8 +1,28 @@
+from django.conf import settings
 from django.shortcuts import render
 from rest_framework import serializers, viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import BasePermission
 
 from .models import Tenant, Domain
+
+
+class IsPlatformAdmin(BasePermission):
+    """Gate the platform-admin API (runs on the bare domain, public schema).
+
+    The public schema has no users to authenticate against, so this checks a
+    shared secret instead. With PLATFORM_ADMIN_TOKEN set, callers must send a
+    matching X-Platform-Token header. With it unset the API is open, but only
+    while DEBUG is on -- so a production deploy that forgets the token gets a
+    locked door, not an open one.
+    """
+
+    message = "Missing or invalid X-Platform-Token header."
+
+    def has_permission(self, request, view):
+        token = getattr(settings, "PLATFORM_ADMIN_TOKEN", "")
+        if not token:
+            return bool(settings.DEBUG)
+        return request.headers.get("X-Platform-Token") == token
 
 
 class TenantSerializer(serializers.ModelSerializer):
@@ -14,7 +34,7 @@ class TenantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tenant
         fields = [
-            "id", "name", "slug", "category", "plan",
+            "id", "name", "slug", "plan",
             "domain", "primary_domain", "created_on",
         ]
         read_only_fields = ["id", "created_on"]
@@ -50,14 +70,11 @@ class TenantSerializer(serializers.ModelSerializer):
 
 
 class TenantViewSet(viewsets.ModelViewSet):
-    """Platform-admin API to list/create tenants.
+    """Platform-admin API to list/create/update restaurants (tenants)."""
 
-    DEV ONLY: open to everyone. In production this MUST be restricted to
-    platform admins (the public schema has no per-tenant users to auth against).
-    """
     queryset = Tenant.objects.exclude(schema_name="public").order_by("-created_on")
     serializer_class = TenantSerializer
-    permission_classes = [AllowAny]   # TODO: protect in production
+    permission_classes = [IsPlatformAdmin]
 
 
 def public_landing(request):
