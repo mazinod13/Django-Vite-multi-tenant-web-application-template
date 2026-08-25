@@ -2,84 +2,83 @@ from django.db import models
 
 from apps.tenant.core.models import BaseModel
 
-
-class Table(BaseModel):
-    number = models.PositiveIntegerField(unique=True)
-    seats = models.PositiveIntegerField(default=4)
-    is_occupied = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Table {self.number}"
-
-
-class MenuItem(BaseModel):
+class MenuCategory(BaseModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=8, decimal_places=2)
-    is_available = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["display_order", "name"]
+        verbose_name_plural = "Menu categories"
 
     def __str__(self):
         return self.name
 
 
-class Order(BaseModel):
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("preparing", "Preparing"),
-        ("served", "Served"),
-        ("paid", "Paid"),
-        ("cancelled", "Cancelled"),
-    ]
-    table = models.ForeignKey(
-        Table, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name="orders",
+class MenuItem(BaseModel):
+    category = models.ForeignKey(
+        MenuCategory, on_delete=models.CASCADE, related_name="items"
     )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
-    note = models.CharField(max_length=255, blank=True)
-
-    def __str__(self):
-        return f"Order {str(self.id)[:8]} ({self.status})"
-
-    @property
-    def total(self):
-        return sum(item.subtotal for item in self.items.all())
-
-
-class OrderItem(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT)
-    quantity = models.PositiveIntegerField(default=1)
-
-    @property
-    def subtotal(self):
-        return self.menu_item.price * self.quantity
-
-    def __str__(self):
-        return f"{self.quantity} x {self.menu_item.name}"
-
-
-class Reservation(BaseModel):
-    customer_name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=20, blank=True)
-    table = models.ForeignKey(
-        Table, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name="reservations",
-    )
-    reserved_for = models.DateTimeField()
-    party_size = models.PositiveIntegerField(default=2)
-
-    def __str__(self):
-        return f"{self.customer_name} @ {self.reserved_for}"
-
-
-class Inventory(BaseModel):
-    item_name = models.CharField(max_length=100)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    unit = models.CharField(max_length=20, default="units")   # kg, litres, units
-    reorder_level = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    is_available = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        verbose_name_plural = "Inventory"
+        ordering = ["display_order", "name"]
 
     def __str__(self):
-        return self.item_name
+        return self.name
+
+
+class MenuVariant(BaseModel):
+    """e.g. Small / Medium / Large, or Half / Full — each with its own price."""
+    item = models.ForeignKey(
+        MenuItem, on_delete=models.CASCADE, related_name="variants"
+    )
+    name = models.CharField(max_length=50)  # e.g. "Full"
+    price = models.DecimalField(max_digits=8, decimal_places=2)
+    is_default = models.BooleanField(default=False)
+    display_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["display_order"]
+
+    def __str__(self):
+        return f"{self.item.name} — {self.name}"
+
+
+class ModifierGroup(BaseModel):
+    """e.g. 'Choose your spice level', 'Add-ons'"""
+    item = models.ForeignKey(
+        MenuItem, on_delete=models.CASCADE, related_name="modifier_groups"
+    )
+    name = models.CharField(max_length=100)
+    is_required = models.BooleanField(default=False)
+    min_select = models.PositiveIntegerField(default=0)
+    max_select = models.PositiveIntegerField(default=1)
+    display_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["display_order"]
+
+    def __str__(self):
+        return f"{self.item.name} — {self.name}"
+
+
+class Modifier(BaseModel):
+    """e.g. 'Mild', 'Extra cheese' — an option within a ModifierGroup"""
+    group = models.ForeignKey(
+        ModifierGroup, on_delete=models.CASCADE, related_name="modifiers"
+    )
+    name = models.CharField(max_length=100)
+    price_delta = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    is_available = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["display_order"]
+
+    def __str__(self):
+        return self.name

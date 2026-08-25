@@ -1,28 +1,71 @@
 from django.contrib import admin
 
-from .models import Table,MenuItem,Order,OrderItem,Reservation,Inventory
+from .models import MenuCategory, MenuItem, MenuVariant, ModifierGroup, Modifier
 
-@admin.register(Table)
-class TableAdmin(admin.ModelAdmin):
-    list_display = ("number","seats","is_occupied")
-    
+
+# ---- Inlines ----
+
+class MenuVariantInline(admin.TabularInline):
+    model = MenuVariant
+    extra = 1
+
+
+class ModifierInline(admin.TabularInline):
+    model = Modifier
+    extra = 1
+
+
+class ModifierGroupInline(admin.TabularInline):
+    model = ModifierGroup
+    extra = 1
+    show_change_link = True  
+
+
+class MenuItemInline(admin.TabularInline):
+    model = MenuItem
+    extra = 1
+    show_change_link = True 
+
+
+# ---- MENU admin panel ----
+
+@admin.register(MenuCategory)
+class MenuCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "description", "is_active", "display_order")
+    list_editable = ("is_active", "display_order")
+    search_fields = ("name",)
+    inlines = [MenuItemInline]
+
+
 @admin.register(MenuItem)
 class MenuItemAdmin(admin.ModelAdmin):
-    list_display = ("name","description","price","is_available")
+    list_display = ("category", "name", "description", "display_order", "is_available")
+    list_editable = ("display_order", "is_available")
+    list_filter = ("category", "is_available")
+    search_fields = ("name", "description")
+    inlines = [MenuVariantInline, ModifierGroupInline]
 
-@admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
-    list_display = ("table","status","note","total")
 
-@admin.register(OrderItem)                
-class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ("order","menu_item","quantity")
-    
-@admin.register(Reservation)
-class ReservationAdmin(admin.ModelAdmin):
-    list_display = ("customer_name","phone","table","reserved_for","party_size")
-    
-@admin.register(Inventory)
-class InventoryAdmin(admin.ModelAdmin):
-    list_display = ("item_name","quantity","unit","reorder_level")
-                   
+@admin.register(MenuVariant)
+class MenuVariantAdmin(admin.ModelAdmin):
+    list_display = ("item", "name", "price", "is_default", "display_order")
+    list_editable = ("price", "is_default", "display_order")
+    list_filter = ("item__category",)
+    search_fields = ("item__name", "name")
+
+
+@admin.register(ModifierGroup)
+class ModifierGroupAdmin(admin.ModelAdmin):
+    list_display = ("item", "name", "is_required", "min_select", "max_select", "display_order")
+    list_editable = ("is_required", "min_select", "max_select", "display_order")
+    list_filter = ("item__category", "is_required")
+    search_fields = ("item__name", "name")
+    inlines = [ModifierInline]
+
+
+@admin.register(Modifier)
+class ModifierAdmin(admin.ModelAdmin):
+    list_display = ("group", "name", "price_delta", "is_available", "display_order")
+    list_editable = ("price_delta", "is_available", "display_order")
+    list_filter = ("group__item__category",)
+    search_fields = ("group__name", "name")
