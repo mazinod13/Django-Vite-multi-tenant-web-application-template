@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.shortcuts import render
+from django_tenants.utils import schema_context
 from rest_framework import serializers, viewsets
 from rest_framework.permissions import BasePermission
 
@@ -51,6 +52,13 @@ class TenantSerializer(serializers.ModelSerializer):
         tenant = Tenant(schema_name=validated_data["slug"], **validated_data)
         tenant.save()  # auto_create_schema=True -> creates the schema + runs tenant migrations
         Domain.objects.create(domain=domain_name, tenant=tenant, is_primary=True)
+
+        # Seed the new schema so the restaurant is usable on first login.
+        # This runs in the public schema, so switch before touching tenant models.
+        from apps.tenant.core.bootstrap import bootstrap_tenant
+
+        with schema_context(tenant.schema_name):
+            bootstrap_tenant(tenant)
         return tenant
 
     def update(self, instance, validated_data):
