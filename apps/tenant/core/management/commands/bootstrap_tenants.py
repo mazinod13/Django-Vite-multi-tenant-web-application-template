@@ -8,7 +8,7 @@ get_or_create.
     python manage.py bootstrap_tenants --schema yums
 """
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django_tenants.utils import schema_context
 
 from apps.public.tenants.models import Tenant
@@ -26,8 +26,15 @@ class Command(BaseCommand):
             "--promote-superusers", action="store_true",
             help="Give roleless superusers the owner role and the Main branch.",
         )
+        parser.add_argument(
+            "--owner",
+            help="Username to make owner of --schema (also grants admin access).",
+        )
 
     def handle(self, *args, **options):
+        if options["owner"] and not options["schema"]:
+            raise CommandError("--owner requires --schema (an owner is per-restaurant).")
+
         tenants = Tenant.objects.exclude(schema_name="public")
         if options["schema"]:
             tenants = tenants.filter(schema_name=options["schema"])
@@ -46,6 +53,21 @@ class Command(BaseCommand):
                         role=Role.objects.get(slug=Role.OWNER),
                         branch=Branch.objects.get(name=MAIN_BRANCH_NAME),
                     )
+                if options["owner"]:
+                    user = TenantUser.objects.filter(username=options["owner"]).first()
+                    if user is None:
+                        raise CommandError(
+                            f"No user '{options['owner']}' in schema '{tenant.schema_name}'."
+                        )
+                    user.role = Role.objects.get(slug=Role.OWNER)
+                    user.branch = Branch.objects.get(name=MAIN_BRANCH_NAME)
+                    user.is_staff = True       # can reach /admin/
+                    user.is_superuser = True   # full rights inside this tenant only
+                    user.save(update_fields=["role", "branch", "is_staff", "is_superuser"])
+                    self.stdout.write(self.style.SUCCESS(
+                        f"{tenant.schema_name}: {user.username} is now owner."
+                    ))
+
                 self.stdout.write(self.style.SUCCESS(
                     f"{tenant.schema_name}: branches={Branch.objects.count()} "
                     f"roles={Role.objects.count()} taxes={TaxRate.objects.count()} "
