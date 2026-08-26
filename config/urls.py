@@ -28,4 +28,5 @@ urlpatterns = [
     path("", dashboard, name="dashboard"),
     path("reset-password", reset_password, name="reset_password"),
     re_path(r"^(?!api/|admin/|reset-password).*$",dashboard),
+    path("api/restaurant/", include("apps.tenant.restaurant.urls")),
 ]
